@@ -3,35 +3,42 @@ import threading
 import webbrowser
 import speech_recognition as sr
 import pyttsx3
+import datetime
+import wikipedia
+import pyjokes
 
-# Initialize modules
+# Initialize
 recognizer = sr.Recognizer()
 engine = pyttsx3.init()
 listening = False
 
-# Text-to-speech
+# GUI Appearance
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("blue")
+
+# Speak Function
 def speak(text):
     engine.say(text)
     engine.runAndWait()
-    update_text_area(f"Jarvis: {text}")
+    update_text_area(f"🤖 Jarvis: {text}")
 
-# Voice recognition
+# Listen Function
 def listen():
     with sr.Microphone() as source:
         status_label.configure(text="🎙️ Listening...", text_color="green")
         try:
             audio = recognizer.listen(source)
             command = recognizer.recognize_google(audio).lower()
-            update_text_area(f"You: {command}")
+            update_text_area(f"🧑 You: {command}")
             return command
         except sr.UnknownValueError:
-            update_text_area("Jarvis: Sorry, I couldn't understand that.")
+            update_text_area("🤖 Jarvis: Sorry, I couldn't understand that.")
             return ""
         except sr.RequestError:
-            update_text_area("Jarvis: Network error.")
+            update_text_area("🤖 Jarvis: Network error.")
             return ""
 
-# Command execution
+# Command Execution
 def execute_command(command):
     if "open google" in command:
         speak("Opening Google")
@@ -53,32 +60,48 @@ def execute_command(command):
         speak("Opening YouTube")
         webbrowser.open("https://www.youtube.com")
 
-    elif "play music" in command:
-        speak("Which song do you want to play?")
-        song = listen().strip().lower()
-        music_lower = {key.lower(): value for key, value in music.music.items()}
-        if song in music_lower:
-            speak(f"Playing {song}")
-            webbrowser.open(music_lower[song])
+    elif "what's the time" in command or "what is the time" in command:
+        now = datetime.datetime.now()
+        speak(f"The current time is {now.strftime('%I:%M %p')}")
+
+    elif "what's the date" in command or "what is the date" in command:
+        today = datetime.date.today()
+        speak(f"Today is {today.strftime('%B %d, %Y')}")
+
+    elif "search wikipedia for" in command:
+        topic = command.replace("search wikipedia for", "").strip()
+        if topic:
+            try:
+                summary = wikipedia.summary(topic, sentences=2)
+                speak(f"According to Wikipedia: {summary}")
+            except wikipedia.exceptions.DisambiguationError:
+                speak("There are multiple results, please be more specific.")
+            except:
+                speak("Sorry, I couldn’t fetch that from Wikipedia.")
         else:
-            speak("Sorry, I don't have that song in my library.")
+            speak("What should I search on Wikipedia?")
+            topic = listen()
+            if topic:
+                execute_command(f"search wikipedia for {topic}")
+
+    elif "tell me a joke" in command:
+        joke = pyjokes.get_joke()
+        speak(joke)
 
     elif "exit" in command or "stop" in command:
         speak("Goodbye!")
         stop_listening()
         app.quit()
-
     else:
         speak("Sorry, I don't understand that command.")
 
-# Update text area in GUI
 def update_text_area(text):
     output_textbox.configure(state="normal")
     output_textbox.insert("end", text + "\n")
     output_textbox.see("end")
     output_textbox.configure(state="disabled")
 
-# Background loop for voice assistant
+# Voice Assistant Loop
 def assistant_loop():
     global listening
     speak("Jarvis is ready.")
@@ -94,42 +117,48 @@ def assistant_loop():
                 if user_command:
                     execute_command(user_command)
 
-# Start and Stop functions
+# Start/Stop Functions
 def start_listening():
     global listening
     listening = True
-    update_text_area("Jarvis started.")
+    update_text_area("✅ Jarvis started.")
     threading.Thread(target=assistant_loop, daemon=True).start()
     status_label.configure(text="🎙️ Listening...", text_color="green")
 
 def stop_listening():
     global listening
     listening = False
-    status_label.configure(text="Jarvis has been stopped.", text_color="red")
-    update_text_area("Jarvis stopped.")
+    status_label.configure(text="🔴 Jarvis has been stopped.", text_color="red")
+    update_text_area("❌ Jarvis stopped.")
 
 # GUI Setup
-ctk.set_appearance_mode("dark")
-ctk.set_default_color_theme("blue")
-
 app = ctk.CTk()
-app.title("Jarvis Voice Assistant")
-app.geometry("500x450")
+app.title("🤖 Jarvis - Voice Assistant")
+app.geometry("540x560")
+app.resizable(False, False)
 
-title_label = ctk.CTkLabel(app, text="🤖 Jarvis", font=ctk.CTkFont(size=24, weight="bold"))
+# Styling
+title_label = ctk.CTkLabel(app, text="🤖 Jarvis Voice Assistant", font=ctk.CTkFont(size=26, weight="bold"))
 title_label.pack(pady=10)
 
 status_label = ctk.CTkLabel(app, text="Click 'Start Listening' to begin.", font=ctk.CTkFont(size=16))
 status_label.pack(pady=5)
 
-output_textbox = ctk.CTkTextbox(app, height=200, width=460, corner_radius=8)
-output_textbox.pack(padx=10, pady=10)
+output_frame = ctk.CTkFrame(app, corner_radius=12)
+output_frame.pack(padx=10, pady=10, fill="both", expand=True)
+
+output_textbox = ctk.CTkTextbox(output_frame, height=280, width=500, corner_radius=10, wrap="word", font=("Consolas", 13))
+output_textbox.pack(padx=10, pady=10, fill="both", expand=True)
 output_textbox.configure(state="disabled")
 
-start_btn = ctk.CTkButton(app, text="Start Listening", command=start_listening, fg_color="green", hover_color="#0f0")
-start_btn.pack(pady=5)
+btn_frame = ctk.CTkFrame(app, fg_color="transparent")
+btn_frame.pack(pady=10)
 
-stop_btn = ctk.CTkButton(app, text="Stop / Exit", command=stop_listening, fg_color="red", hover_color="#f00")
-stop_btn.pack(pady=5)
+start_btn = ctk.CTkButton(btn_frame, text="▶️ Start Listening", command=start_listening, fg_color="#22bb33", hover_color="#1eaa2a", width=180)
+start_btn.grid(row=0, column=0, padx=10)
 
+stop_btn = ctk.CTkButton(btn_frame, text="⛔ Stop / Exit", command=stop_listening, fg_color="#bb2222", hover_color="#aa1e1e", width=180)
+stop_btn.grid(row=0, column=1, padx=10)
+
+# Run App
 app.mainloop()
